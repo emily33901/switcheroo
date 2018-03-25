@@ -1,0 +1,6 @@
+[submodule "include/libpebliss"]
+	path = include/libpebliss
+	url = https://github.com/josh33901/libpebliss.git
+[submodule "premake_modules"]
+	path = premake_modules
+	url = https://github.com/josh33901/premake-export-compile-commands.git
