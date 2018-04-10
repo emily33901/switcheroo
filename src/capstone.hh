@@ -13,19 +13,24 @@
 using namespace pe_bliss;
 
 class PeAccessor {
-    std::shared_ptr<pe_base>      image;
-    std::shared_ptr<std::fstream> image_data;
+    pe_base *     image;
+    std::fstream *image_data;
 
 public:
     PeAccessor(const char *file_name) {
-        image_data = std::make_shared<std::fstream>(std::fstream(file_name, std::ios::in bitor std::ios::binary));
+        image_data = new std::fstream(file_name, std::ios::in | std::ios::binary);
         assert(!!*image_data);
 
-        image = std::make_shared<pe_base>(pe_base(*image_data, pe_properties_32(), false));
+        image = new pe_base(*image_data, pe_properties_32(), false);
         assert(image);
     }
 
-    std::weak_ptr<pe_base> base() {
+    ~PeAccessor() {
+        delete image;
+        delete image_data;
+    }
+
+    pe_base *base() {
         return image;
     }
 
@@ -38,6 +43,7 @@ public:
     }
 };
 
+// TODO: if we add multithreading then implement that here
 class CapstoneInstruction {
     cs_insn *inst;
 
@@ -71,11 +77,11 @@ public:
 };
 
 class CapstoneHelper {
-    csh                    handle;
-    std::weak_ptr<pe_base> image;
+    csh      handle;
+    pe_base *image;
 
 public:
-    CapstoneHelper(cs_arch arch, cs_mode mode, std::shared_ptr<pe_base> &image) {
+    CapstoneHelper(cs_arch arch, cs_mode mode, pe_base *image) {
         auto err = cs_open(arch, mode, &handle);
         assert(err == CS_ERR_OK);
 
@@ -85,6 +91,6 @@ public:
     }
 
     CapstoneInstruction disas(u8 *inst_base, u32 code_size, u32 inst_file_address) {
-        return CapstoneInstruction(handle, inst_base, code_size, image.lock()->file_offset_to_rva(inst_file_address));
+        return CapstoneInstruction(handle, inst_base, code_size, image->file_offset_to_rva(inst_file_address));
     }
 };

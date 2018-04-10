@@ -615,4 +615,9 @@ gdb.txt
 core
 compile_commands.json
 .cquery_cached_index
-
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+*.idb

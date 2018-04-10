@@ -12,7 +12,14 @@ int main(const int arg_count, const char **arg_strings) {
         assert(file_name);
 
         PeAccessor p{file_name};
-        auto       image = p.base().lock();
+        auto       image = p.base();
+
+        auto base = image->get_image_base_32();
+
+        // Help us out when we are trying to analyse
+        if (base != 0) {
+            rebase_image(*image, get_relocations(*image), 0x0);
+        }
 
         CapstoneHelper h{cs_arch::CS_ARCH_X86, cs_mode::CS_MODE_32, image};
 
@@ -22,9 +29,9 @@ int main(const int arg_count, const char **arg_strings) {
 
         auto code_root = new XrefCodeDestination(ep_address);
 
-        recurse_functions(image, s->get_raw_data(), h, image->get_ep(), s->get_virtual_address(), code_root);
+        analysis::code::analyse(image, s->get_raw_data(), h, image->get_ep(), s->get_virtual_address(), code_root);
 
-        printf("%d Locations, %d Destinations\n", XrefLocation::get_locations().size(), XrefDestination::get_destinations().size());
+        printf("\n%d Locations, %d Destinations\n", XrefLocation::get_locations().size(), XrefDestination::get_destinations().size());
 
         printf("Dumping...\n");
 
