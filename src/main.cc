@@ -6,33 +6,53 @@
 
 using namespace pe_bliss;
 
-class CallSite;
-
 int main(const int arg_count, const char **arg_strings) {
-	if (arg_count > 1) {
-		const char *file_name = arg_strings[1];
-		assert(file_name);
+    if (arg_count > 1) {
+        const char *file_name = arg_strings[1];
+        assert(file_name);
 
-		PeAccessor p{ file_name };
-		auto image = p.base().lock();
+        PeAccessor p{file_name};
+        auto       image = p.base().lock();
 
-		auto s = p.find_section(".text");
-		auto data = s->get_raw_data();
+        CapstoneHelper h{cs_arch::CS_ARCH_X86, cs_mode::CS_MODE_32, image};
 
-		CapstoneHelper h{ cs_arch::CS_ARCH_X86, cs_mode::CS_MODE_32, image };
+        auto s = p.find_section(".text");
 
-		root_block = std::make_shared<JumpBlock>(JumpBlock(0));
+        auto ep_address = image->get_ep();
 
-		recurse_functions(image, data, h, image->get_ep(), s->get_virtual_address(), root_block);
+        auto code_root = new XrefCodeDestination(ep_address);
 
-		printf("%d Blocks\n", blocks.size());
+        recurse_functions(image, s->get_raw_data(), h, image->get_ep(), s->get_virtual_address(), code_root);
 
-		std::cout << blocks.size() << " Blocks" << std::endl;
+        printf("%d Locations, %d Destinations\n", XrefLocation::get_locations().size(), XrefDestination::get_destinations().size());
 
-		system("pause");
-	}
-	return 0;
+        printf("Dumping...\n");
+
+        FILE *f;
+
+        if (f = fopen("dump.txt", "w")) {
+            fprintf(f, "Locations:\n");
+
+            for (auto &l : XrefLocation::get_locations()) {
+                fprintf(f, "0x%08X (%d) -> 0x%08X (%d)\n", l->address, l->type, l->destination->address, l->destination->type);
+            }
+
+            fprintf(f, "\nDestinations:\n");
+
+            for (auto &d : XrefDestination::get_destinations()) {
+                fprintf(f, "0x%08X (%d) <- {\n", d->address, d->type);
+
+                for (auto &l : d->location) {
+                    fprintf(f, "\t0x%08X (%d)\n", l->address, l->type);
+                }
+
+                fprintf(f, "}\n");
+            }
+
+            fclose(f);
+        }
+
+        system("pause");
+    }
+    return 0;
 }
-
-
-
