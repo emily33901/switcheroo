@@ -1,8 +1,10 @@
 #include "precompiled.hh"
 
-#include <ciso646>
+#include <thread>
 
-#include "functions.hh"
+#include "analysis.hh"
+
+#include "xref.hh"
 
 using namespace pe_bliss;
 
@@ -17,21 +19,25 @@ int main(const int arg_count, const char **arg_strings) {
         auto base = image->get_image_base_32();
 
         // Help us out when we are trying to analyse
+        auto relocations = get_relocations(*image);
         if (base != 0) {
-            rebase_image(*image, get_relocations(*image), 0x0);
+            rebase_image(*image, relocations, 0x0);
         }
 
         CapstoneHelper h{cs_arch::CS_ARCH_X86, cs_mode::CS_MODE_32, image};
 
-        auto s = p.find_section(".text");
-
-        auto ep_address = image->get_ep();
-
-        auto code_root = new XrefCodeDestination(ep_address);
-
-        analysis::code::analyse(image, s->get_raw_data(), h, image->get_ep(), s->get_virtual_address(), code_root);
+        analysis::analyse(&p, &h);
 
         printf("\n%d Locations, %d Destinations\n", XrefLocation::get_locations().size(), XrefDestination::get_destinations().size());
+
+        u32 total_locations_relocations = 0;
+        for (auto loc : XrefLocation::get_locations()) {
+            if (loc->type == XrefLocationType::code) {
+                if (((XrefCodeLocation *)loc)->needs_relocation) total_locations_relocations += 1;
+            }
+        }
+
+        printf("%d need relocations\n", total_locations_relocations);
 
         printf("Dumping...\n");
 
@@ -41,7 +47,12 @@ int main(const int arg_count, const char **arg_strings) {
             fprintf(f, "Locations:\n");
 
             for (auto &l : XrefLocation::get_locations()) {
-                fprintf(f, "0x%08X (%d) -> 0x%08X (%d)\n", l->address, l->type, l->destination->address, l->destination->type);
+                bool relocation = false;
+                if (l->type == XrefLocationType::code) {
+                    relocation = (((XrefCodeLocation *)l)->needs_relocation);
+                }
+
+                fprintf(f, "0x%08X (%d %s) -> 0x%08X (%d)\n", l->address, l->type, relocation ? "true" : "false", l->destination->address, l->destination->type);
             }
 
             fprintf(f, "\nDestinations:\n");
@@ -56,10 +67,30 @@ int main(const int arg_count, const char **arg_strings) {
                 fprintf(f, "}\n");
             }
 
+            fprintf(f, "\nRelocs:\n");
+
+            std::vector<u32> reloc_addresses;
+
+            auto relocations = get_relocations(*image);
+
+            for (const auto &block : relocations) {
+                auto block_rva = block.get_rva();
+
+                for (const auto &reloc : block.get_relocations()) {
+                    reloc_addresses.push_back(block_rva + reloc.get_rva());
+                }
+            }
+
+            for (auto a : reloc_addresses) {
+                fprintf(f, "0x%X\n", a);
+            }
+
             fclose(f);
         }
 
-        system("pause");
+        printf("Done.\n");
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     return 0;
 }

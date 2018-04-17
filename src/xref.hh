@@ -19,6 +19,8 @@ enum class XrefDestinationType {
 class XrefDestination;
 
 // Represents the location where the xref exists
+// These are NOT from the start of the instruction that contains them
+// But at the point where they are referenced as an operand
 // TODO: does the want a backwards link aswell?
 class XrefLocation {
     static std::vector<XrefLocation *> locations;
@@ -37,6 +39,8 @@ class XrefCodeLocation : public XrefLocation {
 
 public:
     XrefCodeLocation(u32 address, XrefDestination *dest);
+
+    bool needs_relocation;
 };
 
 class XrefDataLocation : public XrefLocation {

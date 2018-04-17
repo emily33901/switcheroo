@@ -13,6 +13,8 @@ XrefLocation::XrefLocation(u32 address, XrefDestination *dest) : address(address
 
 XrefCodeLocation::XrefCodeLocation(u32 address, XrefDestination *dest) : XrefLocation(address, dest) {
     type = XrefLocationType::code;
+
+    needs_relocation = false;
 }
 
 XrefDataLocation::XrefDataLocation(u32 address, XrefDestination *dest) : XrefLocation(address, dest) {
