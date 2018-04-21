@@ -32,9 +32,7 @@ int main(const int arg_count, const char **arg_strings) {
 
         u32 total_locations_relocations = 0;
         for (auto loc : XrefLocation::get_locations()) {
-            if (loc->type == XrefLocationType::code) {
-                if (((XrefCodeLocation *)loc)->needs_relocation) total_locations_relocations += 1;
-            }
+            if (loc->needs_relocation) total_locations_relocations += 1;
         }
 
         printf("%d need relocations\n", total_locations_relocations);
@@ -47,10 +45,7 @@ int main(const int arg_count, const char **arg_strings) {
             fprintf(f, "Locations:\n");
 
             for (auto &l : XrefLocation::get_locations()) {
-                bool relocation = false;
-                if (l->type == XrefLocationType::code) {
-                    relocation = (((XrefCodeLocation *)l)->needs_relocation);
-                }
+                auto relocation = l->needs_relocation;
 
                 fprintf(f, "0x%08X (%d %s) -> 0x%08X (%d)\n", l->address, l->type, relocation ? "true" : "false", l->destination->address, l->destination->type);
             }
@@ -61,7 +56,7 @@ int main(const int arg_count, const char **arg_strings) {
                 fprintf(f, "0x%08X (%d) <- {\n", d->address, d->type);
 
                 for (auto &l : d->location) {
-                    fprintf(f, "\t0x%08X (%d)\n", l->address, l->type);
+                    fprintf(f, "\t0x%08X (%d %s)\n", l->address, l->type, l->needs_relocation ? "true" : "false");
                 }
 
                 fprintf(f, "}\n");

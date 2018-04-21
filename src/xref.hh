@@ -9,11 +9,13 @@
 enum class XrefLocationType {
     data,
     code,
+    unknown,
 };
 
 enum class XrefDestinationType {
     data,
     code,
+    unknown,
 };
 
 class XrefDestination;
@@ -33,14 +35,16 @@ public:
     XrefLocationType type;
     u32              address;
     XrefDestination *destination;
+
+    bool needs_relocation;
+
+    static XrefLocation *find(u32 address);
 };
 
 class XrefCodeLocation : public XrefLocation {
 
 public:
     XrefCodeLocation(u32 address, XrefDestination *dest);
-
-    bool needs_relocation;
 };
 
 class XrefDataLocation : public XrefLocation {
